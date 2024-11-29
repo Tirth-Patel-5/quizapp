@@ -1,58 +1,56 @@
-const express = require('express');
-const mysql = require('mysql2');
-const bodyParser = require('body-parser');
+import express from 'express';
+import mysql from 'mysql2';
+import bodyParser from 'body-parser';
+import cors from 'cors';
 
-const app = express();
-app.use(bodyParser.json());
+const app = express(); // Initialize app first
+
+// Enable CORS
+app.use(cors({
+    origin: 'http://localhost:5170', // Update to match your Vite app's port
+    methods: ['GET', 'POST'],
+    credentials: true
+}));
+
+
+app.options('*', cors()); // Handle preflight requests
+
+app.use(bodyParser.json()); // Middleware for parsing JSON bodies
 
 // MySQL connection
 const db = mysql.createConnection({
   host: 'localhost',
   user: 'root',
-  password: 'yourpassword',
+  password: '',
   database: 'quizapp',
 });
 
-db.connect((err) => {
-  if (err) {
-    console.error('Error connecting to MySQL: ' + err.stack);
-    return;
-  }
-  console.log('Connected to MySQL');
+db.connect(err => {
+    if (err) throw err;
+    console.log('Database connected');
 });
 
-// Routes
+// Route for user registration
 app.post('/api/register', (req, res) => {
-  const { username, email } = req.body;
-  const sql = 'INSERT INTO users (username, email) VALUES (?, ?)';
-  db.query(sql, [username, email], (err, result) => {
-    if (err) {
-      return res.status(500).send('Error registering user');
-    }
-    res.status(201).send('User registered');
-  });
+    const { username } = req.body;
+    const query = 'INSERT INTO users (username) VALUES (?)';
+    db.query(query, [username], (err, result) => {
+        if (err) throw err;
+        res.json({ id: result.insertId });
+    });
 });
 
+// Route for saving scores
 app.post('/api/save-score', (req, res) => {
-  const { userId, score } = req.body;
-  const sql = 'UPDATE users SET score = ? WHERE id = ?';
-  db.query(sql, [score, userId], (err, result) => {
-    if (err) {
-      return res.status(500).send('Error saving score');
-    }
-    res.status(200).send('Score saved');
-  });
+    const { userId, score } = req.body;
+    const query = 'INSERT INTO scores (user_id, score) VALUES (?, ?)';
+    db.query(query, [userId, score], (err, result) => {
+        if (err) throw err;
+        res.send('Score saved');
+    });
 });
 
-app.get('/api/user/:id', (req, res) => {
-  const sql = 'SELECT * FROM users WHERE id = ?';
-  db.query(sql, [req.params.id], (err, results) => {
-    if (err) {
-      return res.status(500).send('Error fetching user data');
-    }
-    res.json(results[0]);
-  });
-});
 
+// Start server
 const PORT = 5000;
 app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
